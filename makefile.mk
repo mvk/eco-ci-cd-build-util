@@ -7,12 +7,6 @@
 # Load user overrides first
 -include vars.mk
 
-# Source .env file if it exists
-ifneq (,$(wildcard .env))
-    include .env
-    export
-endif
-
 DRY_RUN                     ?= 0
 
 # Core configuration
@@ -500,6 +494,16 @@ run-all-e2e-tests:
 	$(MAKE) -f $(MAKEFILE_LIST) run-ansible-e2e-test TEST_PLAYBOOK=test-report-send.yml COMPONENT=dci
 	$(MAKE) -f $(MAKEFILE_LIST) run-ansible-e2e-test TEST_PLAYBOOK=test-report-send.yml COMPONENT=jenkins
 	$(MAKE) -f $(MAKEFILE_LIST) run-ansible-e2e-test TEST_PLAYBOOK=test-time-conversion.yml COMPONENT=time-conversion
+
+run-python-tests:
+	@echo "$(ICON_INFO) Running Python tests in $(TARGET_DIR)"
+	@$(call with_venv,pip install -r pip-dev.txt)
+	@$(call with_venv,pytest)
+
+run-pylint:
+	@echo "$(ICON_INFO) Running Python pylint in $(TARGET_DIR)"
+	@$(call with_venv,pip install -r pip-dev.txt)
+	@$(call with_venv,pylint playbooks/roles/*/*_plugins/*.py)
 
 #------------------------------------------------------------------------------
 # Container Image Targets
