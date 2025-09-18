@@ -1,0 +1,7 @@
+-r pip.txt
+pytest
+pytest-ansible
+pytest-plus
+pytest-sugar
+pytest-xdist
+pylint
