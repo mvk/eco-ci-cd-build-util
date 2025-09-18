@@ -3,6 +3,11 @@
 ################################################################################
 
 .ONESHELL:
+# Macro that will print variable value
+define print_var_info
+$(info $(1): $($(1)))
+endef
+
 
 # Load user overrides first
 -include vars.mk
