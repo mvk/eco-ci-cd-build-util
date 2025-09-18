@@ -29,7 +29,8 @@ IMAGE_PYTHON_VERSION        ?= 3.12
 PY_EXEC                     ?= python$(PYTHON_VERSION)
 VENV_DIR                    ?= .venv
 IMAGE_VENV_ENABLE           ?= 1
-PY_REQS                     ?= pip
+PIP_REQS                    ?= pip.txt
+PIP_REQS_DEV                ?= pip-dev.txt
 
 # Base image configuration
 BASE_TAG                    ?= latest
@@ -62,7 +63,7 @@ EE_NAME                     ?= $(NAME)-ee
 EE_DIR                      ?= $(EE_NAME)-ubi-amd64
 EE_FULL_NAME                ?= $(REGISTRY)/$(NAMESPACE)/$(EE_NAME)
 EE_TAG                      ?= $(GIT_COMMIT_HASH)
-EE_PY_REQS                  ?= requirements-ee
+EE_PIP_REQS                  ?= requirements-ee
 EE_NAV_PLAYBOOK             ?= playbooks/report-send.yml
 EE_NAV_MODE                 ?= stdout
 EE_NAV_PULL_POLICY          ?= missing
@@ -406,36 +407,33 @@ venv-ensure:
 	@mkdir -p $(VENV_DIR)
 	@$(PY_EXEC) -m venv $(VENV_DIR)
 	@$(call with_venv,$(PY_EXEC) -m pip install --upgrade pip)
-	@for req in $(PY_REQS); do
-		@$(call with_venv,$(PY_EXEC) -m pip install -r $${req}.txt);
+	@for req in $(PIP_REQS); do
+		echo "IN: $${PWD}/$${req}"
+		@$(call with_venv,$(PY_EXEC) -m pip install -r $${PWD}/$${req});
 	@done
 	@echo "$(ICON_SUCCESS) Ensured venv $(VENV_DIR) is installed"
 
 python-deps-update: venv-ensure
-	@$(call python_requirements_update,$@,$(PY_REQS))
+	@$(call python_requirements_update,$@,$(PIP_REQS))
 
 python-deps-update-ee: venv-ensure
-	@$(call python_requirements_update,$@,$(EE_PY_REQS))
+	@$(call python_requirements_update,$@,$(EE_PIP_REQS))
 
 python-deps-update-interactive: venv-ensure
 	@echo "$(ICON_INFO) Updating python dependencies interactively"
 	@$(call with_venv,true)
-	@for req in $(PY_REQS); do
-		@$(call require_file,$${req}.in,Missing requirements file $${req}.in)
-		@CMD=(pip-compile $${req}.in -o $${req}.txt --interactive)
+	@for req in $(PIP_REQS); do
+		@$(call require_file,$${req//.txt/.in},Missing requirements file $${req}.in)
+		@CMD=(pip-compile $${req//.txt/.in} -o $${req} --interactive)
 		@if [ $(SCRIPT_DEBUG) -eq 1 ]; then CMD+=(--verbose); fi
-		@$(call run_cmd,Updating $${req}.txt interactively,CMD)
+		@$(call run_cmd,Updating $${req} interactively,CMD)
 	@done
 
 python-deps-save: venv-ensure python-deps-update
 	@echo "$(ICON_INFO) Saving python dependencies"
-	@GIT_PAGER=cat git diff {$(subst $(space),$(comma),$(PY_REQS))}.txt
-	@git add {$(subst $(space),$(comma),$(PY_REQS))}.txt
-	@git commit -s -m "Automatic Update of python dependencies done on $(shell date)" || {
-		@echo "$(ICON_WARNING) Failed to commit python dependencies"
-		@exit 1
-	}
-	@echo "$(ICON_SUCCESS) Saved python dependencies"
+	@GIT_PAGER=cat git diff $(PIP_REQS) || git add $(PIP_REQS) && \
+	git commit -s -m "Automatic Update of python dependencies done on $(shell date)" && \
+	echo "$(ICON_SUCCESS) Saved python dependencies"
 
 #------------------------------------------------------------------------------
 # Ansible Environment Targets
@@ -497,12 +495,12 @@ run-all-e2e-tests:
 
 run-python-tests:
 	@echo "$(ICON_INFO) Running Python tests in $(TARGET_DIR)"
-	@$(call with_venv,pip install -r pip-dev.txt)
+	@$(call with_venv,pip install -r $(PIP_REQS_DEV))
 	@$(call with_venv,pytest)
 
 run-pylint:
-	@echo "$(ICON_INFO) Running Python pylint in $(TARGET_DIR)"
-	@$(call with_venv,pip install -r pip-dev.txt)
+	@echo "$(ICON_INFO) Running Python pylint in folder: $(TARGET_DIR)"
+	@$(call with_venv,pip install -r $(PIP_REQS_DEV))
 	@$(call with_venv,pylint playbooks/roles/*/*_plugins/*.py)
 
 #------------------------------------------------------------------------------
