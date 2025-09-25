@@ -1,16 +1,25 @@
 # eco-ci-cd Build Utilities
 
-This repository contains build utilities and automation tools for the [eco-ci-cd](https://github.com/openshift-kni/eco-ci-cd) project. These utilities provide a comprehensive build system for OpenShift Edge computing CI/CD automation, including container image building, Ansible execution environments, testing, and reporting.
+This repository contains build utilities and automation tools for the
+[eco-ci-cd](https://github.com/openshift-kni/eco-ci-cd) project.
+These utilities provide a comprehensive build system for OpenShift Edge computing CI/CD automation,
+including container image building, Ansible execution environments, testing, and reporting.
 
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.12 or higher
-- GNU Make 4.0.0 or higher (on macOS: `alias make=gmake`)
-- Git
-- Podman or Docker
-- Jinja CLI (`pip install jinja-cli`)
+OS: Mac/Linux supporting the below Applications
+
+#### Applications
+
+| Dependency                                         | Version    | Developed on | Comments                     |
+| -------------------------------------------------- | ---------- | ------------ | ---------------------------- |
+| [Python3](https://www.python.org/downloads/)       | `>=3.11`   | `3.12.7`     |                              |
+| [GNU Make](https://www.gnu.org/software/make/)     | `>=3.82`   | `4.4.1`      | on macOS: `alias make=gmake` |
+| [Git](https://git-scm.com/)                        | `>=2.40.0` | `2.51.0`     |                              |
+| [Podman](https://podman.io/)                       | `>5.0.0`   | `5.5.2`      |                              |
+| [Jinja CLI](https://github.com/cykerway/jinja-cli) |            | `1.2.2`      |                              |
 
 ### Setup Instructions
 
