@@ -1,0 +1,25 @@
+[tool.pytest.ini_options]
+norecursedirs = [".venv", "collections"]
+
+[tool.pylint.master]
+ignore-paths = [
+{%- if build_util_dir|default("") | length >0 %}
+    "^{{ build_util_dir }}/",
+{%- endif %}
+    "^build/",
+    "^collections/",
+    ".*/tests/",
+    "scripts/*"
+]
+
+[tool.pylint.format]
+max-line-length = 120
+
+[tool.pylint."messages control"]
+# Disable specific warnings for ansible filter plugins
+disable = [
+    "missing-module-docstring",
+    "invalid-name",
+    "import-outside-toplevel",
+    "useless-option-value",
+]
