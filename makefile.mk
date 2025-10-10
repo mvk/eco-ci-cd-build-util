@@ -87,6 +87,7 @@ COMPONENT                   ?= $(shell find $(TARGET_DIR)/fixtures -maxdepth 1 -
 ANSIBLE_GALAXY_REQS         ?= requirements.yml
 ANSIBLE_BUILDER_VERBOSITY   ?= 1
 ANSIBLE_PARAMS              ?= -vv
+ANSIBLE_EXTRA_PARAMS        ?=
 ANSIBLE_LINT_PARAMS         ?=
 
 
@@ -335,8 +336,35 @@ define run_test_verification
 endef
 
 # Run ansible-playbook with standardized parameters
-# Usage: $(call run_ansible_playbook,target_dir,playbook,component,extra_vars_file)
+# Usage: $(call run_ansible_playbook,playbook,inventory,extra_vars_file)
 define run_ansible_playbook
+	@$(eval playbook := $(if $(1),$(1),$(TARGET_DIR)/$(RUN_PLAYBOOK)))
+	@$(eval inventory := $(if $(2),$(2),inventories/$(RUN_PLAYBOOK)))
+	@$(eval extra_vars_files := $(if $(3),$(3),vars/$(playbook)))
+	@if [ ! -f "$(playbook)" ]; then
+		@echo "$(ICON_FAILED) Playbook $(playbook) not found"
+		@exit 1
+	@fi
+	@echo "$(ICON_INFO) Using playbook=$(playbook)"
+	@EXTRA_VARS_CHAIN=""
+	@EXTRA_VARS_CHAIN+=" $(ANSIBLE_PARAMS)"
+	@EXTRA_VARS_CHAIN+=" $(ANSIBLE_EXTRA_PARAMS)"
+	@for extra_vars_file in $(extra_vars_files); do
+		if [ -f "$${extra_vars_file}" ]; then
+			echo "$(ICON_INFO) Found extra_vars_file: $${extra_vars_file}"
+			EXTRA_VARS_CHAIN+=" -e @$${extra_vars_file}"
+		fi
+	done
+	# Set log path and execute ansible command
+	@LOG_PATH=$(basename $(notdir $(playbook_path))).$(component).$(shell date +%Y%m%d%H%M%S).log
+	@echo "$(ICON_INFO) Using ANSIBLE_LOG_PATH=$(LOG_PATH)"
+	@CMD=(ansible-playbook -i $(inventory) $(playbook) $${EXTRA_VARS_CHAIN})
+	@$(call ansible_cmd,Running playbook $(playbook),CMD,$(LOG_PATH))
+endef
+
+# Run ansible-playbook with standardized parameters for test
+# Usage: $(call run_test_ansible_playbook,target_dir,playbook,component,extra_vars_file)
+define run_test_ansible_playbook
 	@$(eval target_dir := $(if $(1),$(1),$(TARGET_DIR)))
 	@$(eval playbook_file := $(if $(2),$(2),$(RUN_PLAYBOOK)))
 	@$(eval component := $(if $(3),$(3),$(if $(COMPONENT),$(COMPONENT),default)))
@@ -377,7 +405,7 @@ define run_component_tests
 	@$(eval component := $(if $(3),$(3),$(if $(COMPONENT),$(COMPONENT),default)))
 	
 	@echo "$(ICON_INFO) Running tests for component: $(component)"
-	@$(call run_ansible_playbook,$(target_dir),$(playbook),$(component))
+	@$(call run_test_ansible_playbook,$(target_dir),$(playbook),$(component))
 	@$(call run_test_verification,$(target_dir),$(playbook),$(component))
 endef
 
@@ -461,6 +489,10 @@ ansible-lint:
 # Testing Targets
 #------------------------------------------------------------------------------
 
+run-report-send-test:
+	@echo "$(ICON_INFO) Running report send tests in $(TARGET_DIR)"
+	@$(call run_ansible_playbook,$(TARGET_DIR)/test-$(RUN_PLAYBOOK),inventories/$(RUN_PLAYBOOK),$(if $(EXT_VARS_FILES),$(EXT_VARS_FILES),vars/$(RUN_PLAYBOOK)))
+
 test:
 	@echo "$(ICON_INFO) Running tests in $(TARGET_DIR)"
 	@$(call discover_and_run_tests,$(TARGET_DIR),$(if $(TEST_PLAYBOOK),$(TEST_PLAYBOOK),test_$(RUN_PLAYBOOK)),$(if $(COMPONENT),$(COMPONENT),$(CI_TYPE)))
@@ -490,8 +522,8 @@ run-ansible-e2e-test:
 	@fi
 	@echo "$(ICON_INFO) Using COMPONENT=$(COMPONENT) (available: $(COMPONENTS))"
 	
-	# Use enhanced run_ansible_playbook function with custom extra vars file
-	@$(call run_ansible_playbook,$(TARGET_DIR),$(TEST_PLAYBOOK),$(COMPONENT),$(EXT_VARS_FILE))
+	# Use enhanced run_test_ansible_playbook function with custom extra vars file
+	@$(call run_test_ansible_playbook,$(TARGET_DIR),$(TEST_PLAYBOOK),$(COMPONENT),$(EXT_VARS_FILE))
 
 run-all-e2e-tests:
 	$(MAKE) -f $(MAKEFILE_LIST) run-ansible-e2e-test TEST_PLAYBOOK=test-report-send.yml COMPONENT=dci
