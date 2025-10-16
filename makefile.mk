@@ -477,7 +477,11 @@ setup-ansible-deps: venv-ensure
 	@CMD=(ansible-galaxy collection install --force --pre -r $(ANSIBLE_GALAXY_REQS))
 	@$(call ansible_cmd,Installing Ansible collections,CMD,)
 
-bootstrap: setup-ansible-deps
+setup-python-deps: venv-ensure
+	@echo "$(ICON_INFO) Installing python dependencies from "
+	@$(call with_venv,pip install -r $(PIP_REQS_DEV))
+
+bootstrap: venv-ensure	setup-ansible-deps	setup-python-deps
 	@echo "$(ICON_SUCCESS) Environment ready"
 
 ansible-lint:
@@ -530,9 +534,8 @@ run-all-e2e-tests:
 	$(MAKE) -f $(MAKEFILE_LIST) run-ansible-e2e-test TEST_PLAYBOOK=test-report-send.yml COMPONENT=jenkins
 	$(MAKE) -f $(MAKEFILE_LIST) run-ansible-e2e-test TEST_PLAYBOOK=test-time-conversion.yml COMPONENT=time-conversion
 
-run-python-tests:
+run-python-tests: setup-python-deps
 	@echo "$(ICON_INFO) Running Python tests in $(TARGET_DIR)"
-	@$(call with_venv,pip install -r $(PIP_REQS_DEV))
 	@$(call with_venv,pytest)
 
 run-pylint:
